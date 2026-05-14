@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>國語文 AI 命題助手 - 引導式 Prompt 工具</title>
+    <!-- 引入 Bootstrap 5 與 Google Fonts -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700&display=swap" rel="stylesheet">
+    <!-- 引入檔案處理套件 -->
+    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
+
+    <style>
+        body { font-family: 'Noto Sans TC', sans-serif; background-color: #f8f9fa; }
+        .stepper-wrapper { display: flex; justify-content: space-between; margin-bottom: 2rem; background: white; padding: 1.5rem; border-radius: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+        .step { text-align: center; position: relative; flex: 1; opacity: 0.3; transition: 0.3s; }
+        .step.active { opacity: 1; font-weight: bold; color: #0d6efd; }
+        .step-num { width: 30px; height: 30px; line-height: 30px; border-radius: 50%; background: #dee2e6; display: inline-block; margin-bottom: 5px; }
+        .active .step-num { background: #0d6efd; color: white; }
+        .card { border: none; box-shadow: 0 4px 12px rgba(0,0,0,0.1); border-radius: 12px; }
+        .prompt-box { background: #e9ecef; border-left: 5px solid #0d6efd; font-family: monospace; white-space: pre-wrap; font-size: 0.9rem; }
+        textarea { resize: vertical; min-height: 200px; }
+        .btn-ai { background-color: #742ddd; color: white; }
+        .btn-ai:hover { background-color: #5a23aa; color: white; }
+    </style>
+</head>
+<body>
+
+<nav class="navbar navbar-dark bg-dark mb-4">
+    <div class="container">
+        <span class="navbar-brand mb-0 h1">📚 國語文 AI 命題助手 (無 API 免費版)</span>
+    </div>
+</nav>
+
+<div class="container mb-5">
+    <!-- 進度指標 -->
+    <div class="stepper-wrapper">
+        <div class="step active" id="step-i-1"><div class="step-num">1</div><div>文本解析</div></div>
+        <div class="step" id="step-i-2"><div class="step-num">2</div><div>文本分析</div></div>
+        <div class="step" id="step-i-3"><div class="step-num">3</div><div>命題規劃</div></div>
+        <div class="step" id="step-i-4"><div class="step-num">4</div><div>生成題目</div></div>
+        <div class="step" id="step-i-5"><div class="step-num">5</div><div>品質驗證</div></div>
+    </div>
+
+    <!-- 主要工作區 -->
+    <div class="row justify-content-center">
+        <div class="col-lg-10">
+            <div class="card p-4">
+                
+                <!-- STEP 1: 文件解析 -->
+                <div id="panel-1">
+                    <h4>第一步：文件解析 (Document Parser)</h4>
+                    <p class="text-muted">上傳文章圖片、PDF 或直接貼上文字，系統會協助您整理成乾淨的文本。</p>
+                    <div class="mb-3">
+                        <label class="form-label">上傳檔案 (圖片或 PDF)</label>
+                        <input type="file" class="form-control" id="filePicker" accept=".pdf, .jpg, .jpeg, .png">
+                        <div id="ocrStatus" class="form-text text-primary mt-1" style="display:none;">處理中，請稍候...</div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">文本內容 (可手動修改)</label>
+                        <textarea id="text-1" class="form-control"></textarea>
+                    </div>
+                    <div class="d-flex justify-content-end gap-2">
+                        <button class="btn btn-outline-secondary" onclick="copyPrompt(1)">📋 複製指令 1 並去出題</button>
+                        <button class="btn btn-primary" onclick="nextStep(2)">下一步：貼回 AI 結果</button>
+                    </div>
+                </div>
+
+                <!-- STEP 2: 文本分析 -->
+                <div id="panel-2" style="display:none;">
+                    <h4>第二步：文本分析 (Text Analyzer)</h4>
+                    <p class="text-muted">請將 AI 產出的「解析後文本」貼回下方，系統將生成「閱讀分析」指令。</p>
+                    <textarea id="text-2" class="form-control mb-3" placeholder="請貼回 AI 處理後的結果..."></textarea>
+                    <div class="d-flex justify-content-between">
+                        <button class="btn btn-link" onclick="prevStep(1)">上一步</button>
+                        <div class="gap-2 d-flex">
+                            <button class="btn btn-outline-secondary" onclick="copyPrompt(2)">📋 複製指令 2</button>
+                            <button class="btn btn-primary" onclick="nextStep(3)">下一步：貼回分析報告</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- STEP 3: 命題規劃 -->
+                <div id="panel-3" style="display:none;">
+                    <h4>第三步：命題規劃 (Assessment Planner)</h4>
+                    <p class="text-muted">請將 AI 的「分析報告」貼回。此步驟將確定題數、比例與難度。</p>
+                    <div class="mb-3">
+                        <label class="form-label">目標對象年級：</label>
+                        <select id="grade" class="form-select w-auto">
+                            <option value="國小高年級">國小高年級</option>
+                            <option value="國中" selected>國中</option>
+                            <option value="高中">高中</option>
+                        </select>
+                    </div>
+                    <textarea id="text-3" class="form-control mb-3" placeholder="請貼回 AI 的分析報告內容..."></textarea>
+                    <div class="d-flex justify-content-between">
+                        <button class="btn btn-link" onclick="prevStep(2)">上一步</button>
+                        <div class="gap-2 d-flex">
+                            <button class="btn btn-outline-secondary" onclick="copyPrompt(3)">📋 複製指令 3</button>
+                            <button class="btn btn-primary" onclick="nextStep(4)">下一步：貼回命題藍圖</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- STEP 4: 生成題目 -->
+                <div id="panel-4" style="display:none;">
+                    <h4>第四步：生成題目 (Question Generator)</h4>
+                    <p class="text-muted">結合文本與藍圖，讓 AI 開始正式出題。</p>
+                    <textarea id="text-4" class="form-control mb-3" placeholder="請貼回 AI 的命題藍圖..."></textarea>
+                    <div class="d-flex justify-content-between">
+                        <button class="btn btn-link" onclick="prevStep(3)">上一步</button>
+                        <div class="gap-2 d-flex">
+                            <button class="btn btn-outline-secondary" onclick="copyPrompt(4)">📋 複製指令 4</button>
+                            <button class="btn btn-primary" onclick="nextStep(5)">下一步：貼回題目內容</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- STEP 5: 品質驗證 -->
+                <div id="panel-5" style="display:none;">
+                    <h4>第五步：品質驗證 (Quality Checker)</h4>
+                    <p class="text-muted">最後一步，讓 AI 擔任審題老師，確保題目嚴謹無誤。</p>
+                    <textarea id="text-5" class="form-control mb-3" placeholder="請貼回 AI 生成的所有題目..."></textarea>
+                    <div class="d-flex justify-content-between">
+                        <button class="btn btn-link" onclick="prevStep(4)">上一步</button>
+                        <div class="gap-2 d-flex">
+                            <button class="btn btn-outline-secondary" onclick="copyPrompt(5)">📋 複製指令 5 (最終檢查)</button>
+                            <button class="btn btn-success" onclick="finish()">🎉 完成！列印結果</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mt-4 p-3 prompt-box" id="debug-prompt-view" style="display:none;">
+                    <h6>即將複製的指令預覽：</h6>
+                    <div id="prompt-content"></div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // 儲存所有 Prompt 範本 (這部分帶入您提供的五個專業 Prompt)
+    const PROMPT_TEMPLATES = {
+        1: `【角色設定】你是一位專業的「國語文文本解析 AI」與「OCR閱讀重建助手」。...（後面接您的完整 Prompt 1）`,
+        2: `【角色設定】你是一位具備 PIRLS 閱讀理解、國語文素養導向命題、國語文文本分析專業的閱讀分析 AI。...（後面接您的完整 Prompt 2）`,
+        3: `【角色設定】你是一位國語文閱讀素養命題老師。你的任務：不是立刻出題，而是：先建立完整命題藍圖。...（後面接您的完整 Prompt 3）`,
+        4: `【角色設定】你是一位專業的國語文素養命題老師。請依照：PIRLS 閱讀理解、素養導向命題、命題藍圖生成閱讀測驗。...（後面接您的完整 Prompt 4）`,
+        5: `【角色設定】你是一位國語文閱讀素養命題審題老師。請檢查題目品質。若不符合要求：請自動修正。...（後面接您的完整 Prompt 5）`
+    };
+
+    let currentStep = 1;
+
+    // 分頁切換功能
+    function nextStep(s) {
+        document.getElementById(`panel-${currentStep}`).style.display = 'none';
+        document.getElementById(`step-i-${currentStep}`).classList.remove('active');
+        currentStep = s;
+        document.getElementById(`panel-${currentStep}`).style.display = 'block';
+        document.getElementById(`step-i-${currentStep}`).classList.add('active');
+        window.scrollTo(0,0);
+    }
+
+    function prevStep(s) {
+        nextStep(s);
+    }
+
+    // 複製指令邏輯
+    function copyPrompt(stepNum) {
+        let content = document.getElementById(`text-${stepNum}`).value;
+        let gradeInfo = (stepNum === 3) ? `\n【指定年級】：${document.getElementById('grade').value}\n` : "";
+        let fullPrompt = PROMPT_TEMPLATES[stepNum] + "\n\n" + gradeInfo + "【目前的輸入內容如下】：\n" + content;
+        
+        navigator.clipboard.writeText(fullPrompt).then(() => {
+            alert(`✅ 指令 ${stepNum} 已複製！\n請貼到 ChatGPT / Claude 網頁。`);
+            window.open("https://chatgpt.com/", "_blank");
+        });
+    }
+
+    // --- 檔案處理功能 (OCR & PDF) ---
+    document.getElementById('filePicker').addEventListener('change', async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        const status = document.getElementById('ocrStatus');
+        status.style.display = 'block';
+
+        if (file.type === "application/pdf") {
+            // PDF 處理
+            const reader = new FileReader();
+            reader.onload = async function() {
+                const typedarray = new Uint8Array(this.result);
+                const pdf = await pdfjsLib.getDocument(typedarray).promise;
+                let fullText = "";
+                for (let i = 1; i <= pdf.numPages; i++) {
+                    const page = await pdf.getPage(i);
+                    const content = await page.getTextContent();
+                    fullText += content.items.map(item => item.str).join(' ') + "\n";
+                }
+                document.getElementById('text-1').value = fullText;
+                status.style.display = 'none';
+            };
+            reader.readAsArrayBuffer(file);
+        } else {
+            // 圖片 OCR 處理
+            Tesseract.recognize(file, 'chi_tra', { logger: m => console.log(m) }).then(({ data: { text } }) => {
+                document.getElementById('text-1').value = text;
+                status.style.display = 'none';
+            });
+        }
+    });
+
+    function finish() {
+        alert("恭喜！您已完成高品質命題。您可以直接列印網頁或複製最終題目至 Word。");
+        window.print();
+    }
+</script>
+
+</body>
+</html>
