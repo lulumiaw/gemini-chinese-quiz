@@ -129,6 +129,11 @@ textarea { resize: vertical; min-height: 130px; line-height: 1.7; }
 .pcard-body.is-open { display: block; }
 .pcard-text { font-family: var(--mono); font-size: 12px; line-height: 1.9; color: var(--ink-soft); padding: 22px 26px; white-space: pre-wrap; word-break: break-word; }
 
+/* FILE HINT */
+.file-hint { display: flex; gap: 10px; align-items: flex-start; background: var(--gold-light); border: 1px solid rgba(184,150,12,0.3); border-radius: 3px; padding: 12px 14px; font-size: 12px; color: var(--ink-soft); line-height: 1.7; margin-top: 2px; }
+.fh-icon { font-size: 16px; flex-shrink: 0; margin-top: 1px; }
+.file-hint strong { color: var(--ink); display: block; margin-bottom: 2px; }
+
 /* TIPS */
 .tips-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; }
 .tip { background: white; border: 1px solid var(--rule); border-radius: 4px; padding: 22px; }
@@ -231,7 +236,15 @@ footer a:hover { color: var(--gold); }
       </div>
       <div class="field-group">
         <div class="field-label">貼入文章（選填，步驟 1～2 建議填寫）</div>
-        <textarea id="inp-article" placeholder="將文章內容貼入此處，產生的 Prompt 會直接包含文章，貼入 AI 後不需再另外貼文…"></textarea>
+        <textarea id="inp-article" placeholder="將文章純文字內容貼入此處，產生的 Prompt 會直接包含文章，貼入 AI 後不需再另外貼文…"></textarea>
+        <div class="file-hint">
+          <span class="fh-icon">📎</span>
+          <div>
+            <strong>文章為圖片或 PDF？</strong>
+            請直接在 Claude／ChatGPT 對話框上傳檔案，此欄位留空即可。<br>
+            複製 Prompt 後，先在 AI 上傳檔案，再貼上 Prompt 送出。
+          </div>
+        </div>
       </div>
       <button class="btn-gen" onclick="generate()"><span>▶</span> 產生客製化 Prompt</button>
     </div>
