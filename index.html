@@ -1,280 +1,762 @@
 <!DOCTYPE html>
 <html lang="zh-TW">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>國語文 AI 命題助手 - 專業版</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700&display=swap" rel="stylesheet">
-    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>國語文閱讀素養出題系統</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;600;700&family=Noto+Sans+TC:wght@300;400;500&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --ink:       #1a1a2e;
+    --ink-soft:  #3d3d5c;
+    --ink-muted: #7a7a99;
+    --paper:     #faf9f6;
+    --paper-warm:#f4f0e8;
+    --rule:      #e2ddd4;
+    --gold:      #c9a227;
+    --gold-pale: #fdf6e3;
+    --red:       #c0392b;
+    --teal:      #1a6b5a;
+    --teal-pale: #eaf4f1;
+    --blue:      #1e3a8a;
+    --blue-pale: #eff3fc;
+    --mono:      'JetBrains Mono', monospace;
+    --serif:     'Noto Serif TC', serif;
+    --sans:      'Noto Sans TC', sans-serif;
+  }
 
-    <style>
-        body { font-family: 'Noto Sans TC', sans-serif; background-color: #f0f2f5; color: #333; }
-        .navbar { background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%); box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
-        .container { max-width: 900px; }
-        .stepper-wrapper { display: flex; justify-content: space-between; margin-bottom: 2rem; background: white; padding: 1.5rem; border-radius: 15px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
-        .step { text-align: center; flex: 1; opacity: 0.3; transition: all 0.4s; }
-        .step.active { opacity: 1; font-weight: bold; color: #1e3c72; transform: scale(1.05); }
-        .step-num { width: 35px; height: 35px; line-height: 35px; border-radius: 50%; background: #dee2e6; display: inline-block; margin-bottom: 8px; font-weight: bold; }
-        .active .step-num { background: #1e3c72; color: white; box-shadow: 0 0 10px rgba(30,60,114,0.4); }
-        .card { border: none; border-radius: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.08); }
-        textarea { border-radius: 10px; border: 1px solid #ced4da; padding: 15px; min-height: 250px; font-size: 0.95rem; line-height: 1.6; }
-        textarea:focus { border-color: #1e3c72; box-shadow: 0 0 0 0.25rem rgba(30,60,114,0.1); }
-        .btn-primary { background-color: #1e3c72; border: none; padding: 10px 25px; border-radius: 8px; font-weight: bold; }
-        .btn-primary:hover { background-color: #2a5298; }
-        .btn-outline-secondary { border-radius: 8px; }
-        .ocr-loading { display: none; padding: 10px; background: #e7f1ff; border-radius: 8px; color: #0d6efd; margin-top: 10px; }
-        .badge-step { background: #e9ecef; color: #495057; font-weight: normal; margin-bottom: 10px; display: inline-block; padding: 5px 12px; border-radius: 20px; }
-    </style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--sans);
+    font-size: 15px;
+    line-height: 1.8;
+    min-height: 100vh;
+  }
+
+  /* ── HERO ── */
+  .hero {
+    background: var(--ink);
+    color: var(--paper);
+    padding: 72px 48px 56px;
+    position: relative;
+    overflow: hidden;
+  }
+  .hero::before {
+    content: '';
+    position: absolute;
+    top: -60px; right: -60px;
+    width: 320px; height: 320px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(201,162,39,0.18) 0%, transparent 70%);
+  }
+  .hero::after {
+    content: '語';
+    position: absolute;
+    bottom: -20px; right: 40px;
+    font-family: var(--serif);
+    font-size: 180px;
+    font-weight: 700;
+    color: rgba(255,255,255,0.04);
+    line-height: 1;
+    pointer-events: none;
+  }
+  .hero-label {
+    display: inline-block;
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--gold);
+    border: 1px solid rgba(201,162,39,0.4);
+    padding: 4px 12px;
+    border-radius: 2px;
+    margin-bottom: 24px;
+  }
+  .hero h1 {
+    font-family: var(--serif);
+    font-size: clamp(28px, 5vw, 48px);
+    font-weight: 700;
+    line-height: 1.3;
+    letter-spacing: 0.05em;
+    margin-bottom: 12px;
+  }
+  .hero h1 span { color: var(--gold); }
+  .hero p {
+    font-size: 14px;
+    color: rgba(250,249,246,0.6);
+    max-width: 520px;
+    line-height: 1.7;
+    margin-bottom: 32px;
+  }
+  .badge-row { display: flex; gap: 10px; flex-wrap: wrap; }
+  .badge {
+    font-size: 12px;
+    font-family: var(--mono);
+    padding: 5px 14px;
+    border-radius: 2px;
+    background: rgba(255,255,255,0.07);
+    border: 1px solid rgba(255,255,255,0.12);
+    color: rgba(250,249,246,0.75);
+    letter-spacing: 0.05em;
+  }
+  .badge.green { background: rgba(26,107,90,0.3); border-color: rgba(26,107,90,0.5); color: #7ecfbe; }
+
+  /* ── LAYOUT ── */
+  .wrap { max-width: 960px; margin: 0 auto; padding: 0 32px; }
+
+  /* ── FLOW ── */
+  .flow-section {
+    background: var(--paper-warm);
+    border-bottom: 1px solid var(--rule);
+    padding: 40px 0;
+  }
+  .flow-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 0;
+  }
+  .flow-step {
+    padding: 20px 16px;
+    border-right: 1px solid var(--rule);
+    position: relative;
+    cursor: default;
+    transition: background 0.2s;
+  }
+  .flow-step:last-child { border-right: none; }
+  .flow-step:hover { background: rgba(201,162,39,0.05); }
+  .step-num {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.15em;
+    color: var(--gold);
+    margin-bottom: 6px;
+  }
+  .step-title {
+    font-family: var(--serif);
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--ink);
+    margin-bottom: 4px;
+  }
+  .step-sub {
+    font-size: 11px;
+    color: var(--ink-muted);
+    line-height: 1.5;
+  }
+
+  /* ── MAIN CONTENT ── */
+  .main { padding: 56px 0; }
+
+  .section-label {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--ink-muted);
+    margin-bottom: 32px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--rule);
+  }
+
+  /* ── PROMPT CARD ── */
+  .prompt-card {
+    margin-bottom: 24px;
+    border: 1px solid var(--rule);
+    border-radius: 4px;
+    overflow: hidden;
+    background: white;
+    transition: box-shadow 0.2s;
+  }
+  .prompt-card:hover { box-shadow: 0 4px 20px rgba(26,26,46,0.08); }
+
+  .card-header {
+    display: flex;
+    align-items: center;
+    padding: 20px 24px;
+    cursor: pointer;
+    user-select: none;
+    gap: 16px;
+    border-bottom: 1px solid transparent;
+    transition: border-color 0.2s;
+  }
+  .card-header.open { border-bottom-color: var(--rule); }
+
+  .card-num {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    color: white;
+    background: var(--ink);
+    padding: 4px 10px;
+    border-radius: 2px;
+    flex-shrink: 0;
+    min-width: 80px;
+    text-align: center;
+  }
+  .card-num.gold   { background: var(--gold); }
+  .card-num.teal   { background: var(--teal); }
+  .card-num.blue   { background: var(--blue); }
+  .card-num.red    { background: var(--red);  }
+
+  .card-info { flex: 1; }
+  .card-title {
+    font-family: var(--serif);
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--ink);
+    margin-bottom: 2px;
+  }
+  .card-desc { font-size: 12px; color: var(--ink-muted); }
+
+  .card-actions { display: flex; gap: 8px; align-items: center; }
+
+  .btn-copy {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    padding: 7px 16px;
+    border-radius: 2px;
+    border: 1px solid var(--rule);
+    background: var(--paper);
+    color: var(--ink-soft);
+    cursor: pointer;
+    transition: all 0.15s;
+    white-space: nowrap;
+  }
+  .btn-copy:hover { background: var(--ink); color: white; border-color: var(--ink); }
+  .btn-copy.copied { background: var(--teal); color: white; border-color: var(--teal); }
+
+  .btn-toggle {
+    width: 28px; height: 28px;
+    border-radius: 50%;
+    border: 1px solid var(--rule);
+    background: none;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    color: var(--ink-muted);
+    font-size: 14px;
+    transition: all 0.2s;
+    flex-shrink: 0;
+  }
+  .btn-toggle:hover { background: var(--ink); color: white; border-color: var(--ink); }
+  .btn-toggle.open { background: var(--ink); color: white; border-color: var(--ink); transform: rotate(180deg); }
+
+  .card-body {
+    display: none;
+    background: #fdfdfc;
+  }
+  .card-body.open { display: block; }
+
+  .prompt-text {
+    font-family: var(--mono);
+    font-size: 12.5px;
+    line-height: 1.8;
+    color: var(--ink-soft);
+    padding: 24px 28px;
+    white-space: pre-wrap;
+    word-break: break-word;
+    tab-size: 2;
+  }
+
+  /* syntax highlights */
+  .prompt-text .kw-section { color: var(--blue); font-weight: 500; }
+  .prompt-text .kw-rule    { color: var(--red);  }
+  .prompt-text .kw-note    { color: var(--teal); }
+
+  /* ── TIPS ── */
+  .tips-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 16px;
+    margin-top: 40px;
+  }
+  .tip-card {
+    background: white;
+    border: 1px solid var(--rule);
+    border-radius: 4px;
+    padding: 20px;
+  }
+  .tip-icon { font-size: 22px; margin-bottom: 10px; }
+  .tip-title { font-family: var(--serif); font-size: 14px; font-weight: 600; margin-bottom: 6px; color: var(--ink); }
+  .tip-body { font-size: 12px; color: var(--ink-muted); line-height: 1.7; }
+
+  /* ── FOOTER ── */
+  footer {
+    border-top: 1px solid var(--rule);
+    background: var(--paper-warm);
+    padding: 32px 0;
+    text-align: center;
+  }
+  footer p { font-size: 12px; color: var(--ink-muted); line-height: 1.8; }
+  footer a { color: var(--gold); text-decoration: none; }
+  footer a:hover { text-decoration: underline; }
+
+  /* ── RESPONSIVE ── */
+  @media (max-width: 600px) {
+    .hero { padding: 48px 24px 40px; }
+    .wrap { padding: 0 20px; }
+    .flow-grid { grid-template-columns: 1fr 1fr; }
+    .flow-step { border-right: none; border-bottom: 1px solid var(--rule); }
+    .card-actions { flex-direction: column; align-items: flex-end; }
+  }
+</style>
 </head>
 <body>
 
-<nav class="navbar navbar-dark mb-4 p-3">
-    <div class="container d-flex justify-content-between">
-        <span class="navbar-brand h1 mb-0">📚 國語文 AI 命題助手</span>
-        <span class="text-white-50 small">免 API 免費版</span>
+<!-- HERO -->
+<header class="hero">
+  <div class="wrap">
+    <div class="hero-label">Chinese Language · PIRLS Literacy</div>
+    <h1>國語文<span>閱讀素養</span><br>出題系統</h1>
+    <p>一套完整的 PIRLS 素養導向命題 Prompt，依序使用六個步驟，從文本解析到品質驗證，生成高品質閱讀測驗。</p>
+    <div class="badge-row">
+      <span class="badge">Claude 相容</span>
+      <span class="badge">ChatGPT 相容</span>
+      <span class="badge green">✓ 無需 API</span>
+      <span class="badge">PIRLS 四層次</span>
+      <span class="badge">雙文本設計</span>
     </div>
-</nav>
+  </div>
+</header>
 
-<div class="container mb-5">
-    <!-- 進度指標 -->
-    <div class="stepper-wrapper">
-        <div class="step active" id="step-i-1"><div class="step-num">1</div><div>文件解析</div></div>
-        <div class="step" id="step-i-2"><div class="step-num">2</div><div>文本分析</div></div>
-        <div class="step" id="step-i-3"><div class="step-num">3</div><div>命題規劃</div></div>
-        <div class="step" id="step-i-4"><div class="step-num">4</div><div>生成題目</div></div>
-        <div class="step" id="step-i-5"><div class="step-num">5</div><div>品質驗證</div></div>
+<!-- FLOW -->
+<section class="flow-section">
+  <div class="wrap">
+    <div class="flow-grid">
+      <div class="flow-step">
+        <div class="step-num">STEP 01</div>
+        <div class="step-title">文件解析器</div>
+        <div class="step-sub">文字擷取、版面重建、OCR修正</div>
+      </div>
+      <div class="flow-step">
+        <div class="step-num">STEP 02</div>
+        <div class="step-title">文本分析器</div>
+        <div class="step-sub">PIRLS分析、情緒曲線、命題元素</div>
+      </div>
+      <div class="flow-step">
+        <div class="step-num">STEP 03</div>
+        <div class="step-title">命題規劃器</div>
+        <div class="step-sub">藍圖、題型、難度、雙文本草稿</div>
+      </div>
+      <div class="flow-step">
+        <div class="step-num">STEP 3.5</div>
+        <div class="step-title">出題前檢核</div>
+        <div class="step-sub">年級鎖定、執行清單建立</div>
+      </div>
+      <div class="flow-step">
+        <div class="step-num">STEP 04</div>
+        <div class="step-title">閱讀題生成</div>
+        <div class="step-sub">依清單生成＋自動品質審查</div>
+      </div>
+      <div class="flow-step">
+        <div class="step-num">STEP 05</div>
+        <div class="step-title">品質驗證器</div>
+        <div class="step-sub">逐題審查、修正、最終輸出</div>
+      </div>
     </div>
+  </div>
+</section>
 
-    <div class="card p-4">
-        <!-- STEP 1 -->
-        <div id="panel-1">
-            <span class="badge-step">第一步：內容擷取</span>
-            <h4 class="mb-3">文件解析器 (Document Parser)</h4>
-            <div class="mb-3">
-                <label class="form-label fw-bold">1. 上傳檔案 (圖片或 PDF) 或直接貼上文字</label>
-                <input type="file" class="form-control mb-2" id="filePicker" accept=".pdf, .jpg, .jpeg, .png">
-                <div id="ocrStatus" class="ocr-loading">⚙️ 正在識別內容，請稍候...</div>
-            </div>
-            <textarea id="text-1" class="form-control mb-3" placeholder="請將要解析的文章內容貼在這裡，或透過上方上傳檔案..."></textarea>
-            <div class="d-flex justify-content-end gap-2">
-                <button class="btn btn-outline-secondary" onclick="copyPrompt(1)">📋 複製指令 1 (去 AI 網頁貼上)</button>
-                <button class="btn btn-primary" onclick="nextStep(2)">下一步：貼回解析結果</button>
-            </div>
-        </div>
+<!-- MAIN -->
+<main class="main">
+<div class="wrap">
+  <div class="section-label">Prompt 完整內容 — 點選展開並複製</div>
 
-        <!-- STEP 2 -->
-        <div id="panel-2" style="display:none;">
-            <span class="badge-step">第二步：深度剖析</span>
-            <h4 class="mb-3">文本分析器 (Text Analyzer)</h4>
-            <p class="text-muted small">請將 AI 輸出的「解析後文本」貼回，準備進行 PIRLS 層次分析。</p>
-            <textarea id="text-2" class="form-control mb-3" placeholder="請貼回 AI 處理後的【二、版面重建後文本】..."></textarea>
-            <div class="d-flex justify-content-between">
-                <button class="btn btn-link text-decoration-none" onclick="prevStep(1)">← 回上一步</button>
-                <div class="gap-2 d-flex">
-                    <button class="btn btn-outline-secondary" onclick="copyPrompt(2)">📋 複製指令 2</button>
-                    <button class="btn btn-primary" onclick="nextStep(3)">下一步：貼回分析報告</button>
-                </div>
-            </div>
-        </div>
-
-        <!-- STEP 3 -->
-        <div id="panel-3" style="display:none;">
-            <span class="badge-step">第三步：藍圖設計</span>
-            <h4 class="mb-3">命題規劃器 (Assessment Planner)</h4>
-            <div class="row g-3 mb-3">
-                <div class="col-md-6">
-                    <label class="form-label fw-bold">選擇目標年段：</label>
-                    <select id="grade" class="form-select">
-                        <option value="國小低年級">國小低年級 (小一、小二)</option>
-                        <option value="國小中年級">國小中年級 (小三、小四)</option>
-                        <option value="國小高年級">國小高年級 (小五、小六)</option>
-                        <option value="國中" selected>國中</option>
-                        <option value="高中">高中</option>
-                    </select>
-                </div>
-            </div>
-            <textarea id="text-3" class="form-control mb-3" placeholder="請貼回 AI 的分析報告內容..."></textarea>
-            <div class="d-flex justify-content-between">
-                <button class="btn btn-link text-decoration-none" onclick="prevStep(2)">← 回上一步</button>
-                <div class="gap-2 d-flex">
-                    <button class="btn btn-outline-secondary" onclick="copyPrompt(3)">📋 複製指令 3</button>
-                    <button class="btn btn-primary" onclick="nextStep(4)">下一步：貼回命題藍圖</button>
-                </div>
-            </div>
-        </div>
-
-        <!-- STEP 4 -->
-        <div id="panel-4" style="display:none;">
-            <span class="badge-step">第四步：題目生成</span>
-            <h4 class="mb-3">閱讀題生成器 (Question Generator)</h4>
-            <textarea id="text-4" class="form-control mb-3" placeholder="請貼回 AI 規劃的命題藍圖..."></textarea>
-            <div class="d-flex justify-content-between">
-                <button class="btn btn-link text-decoration-none" onclick="prevStep(3)">← 回上一步</button>
-                <div class="gap-2 d-flex">
-                    <button class="btn btn-outline-secondary" onclick="copyPrompt(4)">📋 複製指令 4</button>
-                    <button class="btn btn-primary" onclick="nextStep(5)">下一步：貼回生成題目</button>
-                </div>
-            </div>
-        </div>
-
-        <!-- STEP 5 -->
-        <div id="panel-5" style="display:none;">
-            <span class="badge-step">第五步：品質把關</span>
-            <h4 class="mb-3">命題品質驗證器 (Quality Checker)</h4>
-            <textarea id="text-5" class="form-control mb-3" placeholder="請將 AI 生成的所有題目與答案貼回進行驗證..."></textarea>
-            <div class="d-flex justify-content-between">
-                <button class="btn btn-link text-decoration-none" onclick="prevStep(4)">← 回上一步</button>
-                <div class="gap-2 d-flex">
-                    <button class="btn btn-outline-secondary" onclick="copyPrompt(5)">📋 複製指令 5</button>
-                    <button class="btn btn-success" onclick="finish()">🎉 完成！列印考卷</button>
-                </div>
-            </div>
-        </div>
+  <!-- P1 -->
+  <div class="prompt-card">
+    <div class="card-header" onclick="toggle(this)">
+      <span class="card-num">Prompt 1</span>
+      <div class="card-info">
+        <div class="card-title">文件解析器</div>
+        <div class="card-desc">將上傳檔案整理成可分析的乾淨文本</div>
+      </div>
+      <div class="card-actions">
+        <button class="btn-copy" onclick="copyPrompt(event,'p1')">複製 Prompt</button>
+        <button class="btn-toggle">▾</button>
+      </div>
     </div>
+    <div class="card-body">
+<pre class="prompt-text" id="p1">【角色設定】
+你是一位專業的「國語文文本解析 AI」與「OCR 閱讀重建助手」。
+任務：將上傳檔案整理成可進行閱讀素養分析的乾淨文本，而非直接出題。
 
-    <div class="mt-4 alert alert-info small shadow-sm">
-        💡 <strong>使用技巧：</strong> 點擊「複製指令」後，網頁會自動開啟 ChatGPT 頁面，請在該頁面按下 Ctrl+V 貼上並傳送即可。
+【任務一：內容辨識】
+1. 文字擷取
+   - 擷取所有可辨識文字，保留段落結構、標題、對話格式與表格內容
+
+2. 圖像資訊辨識（若圖片含重要資訊）
+   - 分析圖片主題與文字關係
+   - 圖片提供的額外資訊或情緒立場
+   - 圖片可命題重點
+
+3. 非連續文本辨識
+   - 圖表、地圖、時間軸、表格 → 轉換為可閱讀文字格式
+
+4. 錯誤處理
+   - 無法辨識內容請標示【無法辨識】，禁止猜測、補寫、虛構
+
+【任務二：版面重建】
+依照「真實閱讀順序」重建文本，避免欄位錯亂、圖文順序混亂、段落錯置或重複內容。
+
+【任務三：OCR 修正】
+檢查 OCR 錯字、斷句錯誤、段落遺失、重複文字，輸出修正後文本與修正紀錄。
+
+【任務四：文本類型判定】
+判斷文本類型：記敘文／說明文／議論文／新聞／廣告／圖表文本／混合文本
+
+【任務五：命題素材標記】
+若含圖表、插圖、地圖、時間軸，請列出【可進行非連續文本命題的資訊】。
+
+【固定輸出格式】
+一、文本類型：（填寫）
+二、版面重建後文本：（完整文本）
+三、圖片／圖表分析：（若無則寫「無」）
+四、可命題非連續文本資訊：（若無則寫「無」）
+五、OCR 修正紀錄：（條列整理）</pre>
     </div>
+  </div>
+
+  <!-- P2 -->
+  <div class="prompt-card">
+    <div class="card-header" onclick="toggle(this)">
+      <span class="card-num teal">Prompt 2</span>
+      <div class="card-info">
+        <div class="card-title">文本分析器</div>
+        <div class="card-desc">PIRLS 四層次分析、情緒曲線、命題元素庫</div>
+      </div>
+      <div class="card-actions">
+        <button class="btn-copy" onclick="copyPrompt(event,'p2')">複製 Prompt</button>
+        <button class="btn-toggle">▾</button>
+      </div>
+    </div>
+    <div class="card-body">
+<pre class="prompt-text" id="p2">【角色設定】
+你是一位具備 PIRLS 閱讀理解、國語文素養導向命題與文本分析專業的閱讀分析 AI。
+任務：分析「這篇文章適合考哪些能力」，而非直接出題。
+
+【任務一：文章核心分析】
+請分析：文章主題、作者核心觀點、真實情境、學科本質、生活應用、適合命題的關鍵段落。
+
+【任務二：文本類型導向分析】
+先判斷文本類型，再調整分析方向：
+- 記敘文 → 情緒、人物特質、敘事觀點、鋪陳、象徵、主題
+- 說明文 → 因果、分類、概念理解、資訊整合、圖表判讀
+- 議論文 → 論點、論據、作者立場、論證合理性、反方觀點
+- 新聞   → 資訊可信度、立場、標題效果、資訊取捨
+- 廣告   → 說服策略、情緒操控、目標受眾、視覺與文字關係
+
+【任務三：PIRLS 四層次分析】
+- 層次一（提取訊息）：可直接定位的資訊、對應段落與句子
+- 層次二（推論訊息）：跨句理解、因果推論、人物心理、代名詞指涉
+- 層次三（詮釋整合）：全文核心主題、深層意涵、各段如何互相支持
+- 層次四（比較評估）：作者立場、可能偏見、寫作技巧、值得質疑處
+
+【任務四：情緒曲線分析】
+分析各段主要情緒、情緒轉折點、變化原因及如何推動主題。
+最後整理：【情緒曲線】開頭 → 發展 → 轉折 → 結尾
+
+【任務五：敘事結構分析】
+分析：開頭作用、情節推進、鋪陳伏筆、高潮安排、結尾效果、前後呼應、時間順序、敘事觀點。
+最後整理：【文本結構圖】
+
+【任務六：命題元素庫分析】
+- 情緒元素：壓抑、衝突、成長、矛盾、釋放
+- 結構元素：鋪陳、對比、倒敘、呼應、留白
+- 修辭元素：譬喻、排比、映襯、摹寫、雙關
+- 觀點元素：作者立場、價值觀、敘事角度
+
+【固定輸出格式】
+依序輸出：①文章核心分析 ②文本類型分析 ③PIRLS四層次分析 ④情緒曲線分析 ⑤敘事結構分析 ⑥命題元素庫分析</pre>
+    </div>
+  </div>
+
+  <!-- P3 -->
+  <div class="prompt-card">
+    <div class="card-header" onclick="toggle(this)">
+      <span class="card-num blue">Prompt 3</span>
+      <div class="card-info">
+        <div class="card-title">命題規劃器</div>
+        <div class="card-desc">建立命題藍圖、年級難度規劃、雙文本草稿</div>
+      </div>
+      <div class="card-actions">
+        <button class="btn-copy" onclick="copyPrompt(event,'p3')">複製 Prompt</button>
+        <button class="btn-toggle">▾</button>
+      </div>
+    </div>
+    <div class="card-body">
+<pre class="prompt-text" id="p3">【角色設定】
+你是一位國語文閱讀素養命題老師。
+任務：依據 Prompt 2 的分析結果，建立完整命題藍圖，為 Prompt 3.5 提供規劃基礎。
+
+【任務一：建立命題藍圖】
+請規劃並輸出：
+- 題數：選擇題 7 題 + 簡答題 3 題；雙文本比較題另計 3 題
+- PIRLS 比例：層次一 2 題、層次二 3 題、層次三 3 題、層次四 2 題
+- 能力分布與難度分布（依指定年級）
+
+【任務二：素養導向規劃】
+每題須檢查：是否有情境、是否需理解、是否需整合資訊、是否連結生活、是否避免死背。
+
+【任務三：年級難度規劃】
+- 國小低年級：題幹 ≤25字，推論限情緒／行為／畫面，干擾項：簡單對比
+- 國小中年級：題幹 ≤40字，推論含因果／人物特質，干擾項：局部混淆
+- 國小高年級：題幹 ≤55字，推論含跨段整合，干擾項：相近資訊混淆
+- 國中：題幹 ≤70字，推論含詮釋／評估，干擾項：高誘答力
+- 高中：題幹不限，推論含比較／批判，干擾項：多層干擾
+
+【任務四：非連續文本規劃】
+至少安排一題涉及圖表、表格、地圖或時間軸，並確認圖表內容可附上。
+
+【任務五：雙文本比較規劃】
+規劃 3 題雙文本比較題，從不同立場、媒介或觀點設計比較。
+⚠️ 此時即需草擬第二文本主題或內容方向，以便 Prompt 3.5 確認完整性。
+
+【固定輸出格式】
+依序輸出：①命題藍圖 ②PIRLS能力分布 ③題型分布 ④難度規劃 ⑤非連續文本規劃 ⑥雙文本規劃（含第二文本草稿）</pre>
+    </div>
+  </div>
+
+  <!-- P3.5 -->
+  <div class="prompt-card">
+    <div class="card-header" onclick="toggle(this)">
+      <span class="card-num gold">Prompt 3.5</span>
+      <div class="card-info">
+        <div class="card-title">出題前檢核器</div>
+        <div class="card-desc">確認年級規格、建立執行清單、交接出題</div>
+      </div>
+      <div class="card-actions">
+        <button class="btn-copy" onclick="copyPrompt(event,'p35')">複製 Prompt</button>
+        <button class="btn-toggle">▾</button>
+      </div>
+    </div>
+    <div class="card-body">
+<pre class="prompt-text" id="p35">【角色設定】
+你是一位國語文閱讀素養命題規劃師。
+任務：在正式出題前，確認所有出題條件齊備，建立執行清單，交接給 Prompt 4。
+
+【任務一：確認前置作業】
+請確認以下三項已完成，任一未完成請提示使用者補齊：
+✅ 文本已由 Prompt 1 解析完畢
+✅ 文本分析已由 Prompt 2 完成（PIRLS層次、情緒曲線、命題元素庫）
+✅ 命題藍圖已由 Prompt 3 規劃完畢（含第二文本草稿）
+
+【任務二：年級與難度確認】
+請明確確認指定年級，並對應規格：
+- 國小低年級：≤25字／情緒行為畫面推論／簡單對比干擾
+- 國小中年級：≤40字／因果人物推論／局部混淆干擾
+- 國小高年級：≤55字／跨段整合推論／相近資訊干擾
+- 國中：≤70字／詮釋評估推論／高誘答力干擾
+- 高中：不限字數／比較批判推論／多層干擾
+
+【任務三：建立執行清單並交接】
+請輸出以下執行清單，完成後說明：
+「出題條件已確認，請將以上執行清單傳入 Prompt 4 開始生成題目。」
+
+---【本次出題執行清單】---
+年級：（填入）
+文本類型：（填入）
+選擇題：7 題
+簡答題：3 題
+雙文本比較題：3 題
+PIRLS 層次一：2 題 ／ 層次二：3 題 ／ 層次三：3 題 ／ 層次四：2 題
+高層次題（至少）：3 題（跨段／推論／評估）
+非連續文本：✅ 圖表內容已確認可附上
+雙文本：✅ 第二文本完整內容已準備
+禁止事項：✅ 已確認
+低年級限制：✅ 已確認（若適用）
+------------------------</pre>
+    </div>
+  </div>
+
+  <!-- P4 -->
+  <div class="prompt-card">
+    <div class="card-header" onclick="toggle(this)">
+      <span class="card-num">Prompt 4</span>
+      <div class="card-info">
+        <div class="card-title">閱讀題生成器</div>
+        <div class="card-desc">依執行清單生成選擇題、簡答題與雙文本比較題</div>
+      </div>
+      <div class="card-actions">
+        <button class="btn-copy" onclick="copyPrompt(event,'p4')">複製 Prompt</button>
+        <button class="btn-toggle">▾</button>
+      </div>
+    </div>
+    <div class="card-body">
+<pre class="prompt-text" id="p4">【角色設定】
+你是一位專業的國語文閱讀素養命題老師。
+請依照 Prompt 3.5 的執行清單生成題目。
+任務：生成真正具有閱讀鑑別度的素養試題，而非快速出題。
+
+【素養導向要求】（每題必須符合）
+- 情境化：與學生生活連結
+- 理解性：必須閱讀文本才能作答
+- 統整性：部分題需跨段理解
+- 應用性：能連結個人經驗
+- 閱讀性：不能靠常識猜對
+
+【嚴格禁止】
+字詞解釋題／背誦題／直接抄句即可作答／常識可猜對／空泛問法
+題幹直接暗示答案／「以上皆是／皆非」
+
+【選項設計規則】
+1. 同題選項字數與句型須接近，長度差異不可明顯
+2. 干擾項須來自文本相近情節、局部正確資訊或常見誤解，具誘答力
+3. 正確答案不可為選項中最長、最完整或最正向者
+4. 禁止使用與文本無關或常識即可排除的干擾項
+
+【高層次題要求】（至少 3 題）
+須涵蓋跨段整合、推論、比較或評估，不得停留在「找到答案」。
+
+【雙文本比較題規則】
+1. 必須完整提供第二文本（禁止以摘要替代）
+2. 比較題須統整、詮釋、評估，不得只比較表面資訊
+
+【非連續文本規則】（強制至少 1 題）
+1. 涉及圖表的題目，必須完整附上圖表內容
+2. 圖文整合題須包含統整、推論或比較，不得只要求「找資訊」
+
+【每題固定輸出格式】
+【第＿題】
+PIRLS層次：一／二／三／四
+對應能力：（填入）
+素養元素：（填入）
+對應段落：（填入）
+題目：（填入）
+選項：（A）（B）（C）（D）（簡答題略）
+答案：（填入）
+解析：（填入）
+命題意圖：（填入）
+干擾項設計分析：（填入各選項誘答邏輯）
+
+【命題後自動品質審查】
+完成全部題目後，逐題自動檢查：
+- 閱讀依賴度：不閱讀文本不可猜對
+- 選項平衡度：字數與句型接近
+- 干擾項強度：具誘答力、來源合理
+- 雙文本完整性：第二文本完整附上
+- 非連續文本完整性：圖表內容完整附上
+若任一項不符合，請自動修正後再輸出。</pre>
+    </div>
+  </div>
+
+  <!-- P5 -->
+  <div class="prompt-card">
+    <div class="card-header" onclick="toggle(this)">
+      <span class="card-num red">Prompt 5</span>
+      <div class="card-info">
+        <div class="card-title">命題品質驗證器</div>
+        <div class="card-desc">逐題審查、自動修正、輸出最終版本</div>
+      </div>
+      <div class="card-actions">
+        <button class="btn-copy" onclick="copyPrompt(event,'p5')">複製 Prompt</button>
+        <button class="btn-toggle">▾</button>
+      </div>
+    </div>
+    <div class="card-body">
+<pre class="prompt-text" id="p5">【角色設定】
+你是一位國語文閱讀素養命題審題老師。
+任務：檢查 Prompt 4 生成的題目品質，若不符合要求請自動修正後輸出最終版本。
+
+【任務一：素養導向逐題檢查】
+針對每題檢查：
+- 情境性：是否有真實情境連結
+- 理解性：是否需真正閱讀文本
+- 整合性：是否需整合資訊
+- 選項平衡：各選項字數與句型是否接近
+- 正確答案：是否過於突出（最長／最完整／最正向）
+- 干擾項品質：是否具誘答力，來自相近資訊
+- 閱讀依賴度：不閱讀文本是否無法猜對
+- 非連續文本：圖表內容是否完整附上
+- 雙文本完整性：第二文本是否完整（非摘要）
+不符合任何項目 → 請直接修改題目後輸出。
+
+【任務二：命題證據分析】
+每題提供：正確答案依據、對應文本句子、所需閱讀能力、干擾選項錯誤原因、題目區分度來源。
+
+【任務三：難度驗證】
+確認：是否符合指定年級、是否過難或過簡、是否能力分布失衡。
+
+【任務四：最終品質評估】
+評估以下面向並給出整體說明：
+- PIRLS 分布：層次比例是否符合規劃
+- 素養導向：情境化、理解性、應用性是否明確
+- 區分度：各題是否能鑑別不同程度學生
+- 避免死背：是否無死記型題目
+- 真實閱讀情境：是否貼近生活與真實任務
+- 選項平衡度：全卷選項字數是否均衡
+- 干擾項品質：全卷干擾項是否具誘答力
+- 文本完整性：圖表與第二文本是否完整
+
+【固定輸出格式】
+依序輸出：①題目品質檢查 ②修正建議 ③修正後題目 ④命題證據分析 ⑤最終品質評估</pre>
+    </div>
+  </div>
+
+  <!-- TIPS -->
+  <div style="margin-top:48px;">
+    <div class="section-label">使用提示</div>
+    <div class="tips-grid">
+      <div class="tip-card">
+        <div class="tip-icon">🔗</div>
+        <div class="tip-title">同一對話執行</div>
+        <div class="tip-body">建議在同一個對話視窗依序執行六個步驟，AI 可保留上下文，分析結果更精準。</div>
+      </div>
+      <div class="tip-card">
+        <div class="tip-icon">📄</div>
+        <div class="tip-title">先上傳文章</div>
+        <div class="tip-body">使用 Prompt 1 時，先將文章上傳或貼入，再傳送 Prompt，效果最佳。</div>
+      </div>
+      <div class="tip-card">
+        <div class="tip-icon">🎓</div>
+        <div class="tip-title">指定年級</div>
+        <div class="tip-body">在 Prompt 3 或 3.5 時明確指定目標年級，系統會自動調整題幹字數與推論深度。</div>
+      </div>
+      <div class="tip-card">
+        <div class="tip-icon">✅</div>
+        <div class="tip-title">無需 API</div>
+        <div class="tip-body">所有 Prompt 可直接貼入 Claude.ai 或 ChatGPT 網頁版使用，不需任何設定。</div>
+      </div>
+    </div>
+  </div>
+
 </div>
+</main>
+
+<footer>
+  <div class="wrap">
+    <p>國語文閱讀素養出題系統 &nbsp;·&nbsp; 支援 Claude / ChatGPT &nbsp;·&nbsp; 無需 API</p>
+    <p style="margin-top:6px;"><a href="https://creativecommons.org/licenses/by/4.0/">CC BY 4.0</a> &nbsp;·&nbsp; 歡迎自由使用與分享，請保留來源說明</p>
+  </div>
+</footer>
 
 <script>
-    // 整合後的原始 Prompt
-    const PROMPTS = {
-        1: `【角色設定】
-你是一位專業的「國語文文本解析 AI」與「OCR閱讀重建助手」。
-你的任務不是出題，而是將上傳檔案整理成：「可進行閱讀素養分析的乾淨文本」。
+function toggle(header) {
+  const body = header.nextElementSibling;
+  const btn  = header.querySelector('.btn-toggle');
+  const isOpen = body.classList.contains('open');
+  body.classList.toggle('open', !isOpen);
+  header.classList.toggle('open', !isOpen);
+  btn.classList.toggle('open', !isOpen);
+}
 
-【任務要求】請解析以下內容：
-1. 文字擷取：保留段落、標題、對話格式與表格內容。
-2. 圖像辨識：若有圖片請分析主題、與文字關係、情緒或立場、命題重點。
-3. 非連續文本：將圖表、時間軸等轉為可閱讀文字。
-4. 錯誤處理：無法辨識處請標示【無法辨識】，禁止猜測或虛構。
-
-【任務二：版面重建】依照真實閱讀順序重建，避免欄位錯亂。
-【任務三：OCR修正】修正錯字、斷句與遺失段落。
-【任務四：文本類型判定】(記敘、說明、議輪、新聞、廣告等)
-【任務五：命題素材標記】列出可進行非連續文本命題的資訊。
-
-【固定輸出格式】
-【一、文本類型】
-【二、版面重建後文本】
-【三、圖片／圖表分析】
-【四、可命題非連續文本資訊】
-【五、OCR修正紀錄】`,
-
-        2: `【角色設定】
-你是一位具備 PIRLS 閱讀理解、國語文素養導向命題、專業分析能力的 AI。
-你的任務是分析「這篇文章適合考哪些能力」。
-
-【分析要求】
-1. 文章核心分析：主題、觀點、真實情境、學科本質、關鍵段落。
-2. 文本類型導向分析：(依類型強化情緒、因果、論據、立場等分析)。
-3. PIRLS 四層次分析：提取訊息、推論訊息、詮釋整合、比較評估。
-4. 情緒曲線分析：整理開頭→發展→轉折→結尾。
-5. 敘事結構分析：分析開頭、伏筆、高潮、結尾效果。
-6. 命題元素庫分析：標記情緒、結構、修辭、觀點等元素。
-
-【固定輸出格式】請依序輸出上述分析內容。`,
-
-        3: `【角色設定】
-你是一位國語文閱讀素養命題老師。你的任務是建立完整的命題藍圖。
-
-【規劃要求】
-1. 建立命題藍圖：規劃題數、題型、PIRLS 比例、難度分布。
-2. 素養導向規劃：每題需檢查情境化、理解性、生活連結。
-3. 難度調整：請嚴格依照指定年級調整題幹長度、推論深度與干擾項。
-4. 非連續文本與雙文本比較：規劃至少一題圖表題及延伸雙文本題目。
-
-【固定輸出格式】輸出命題藍圖、能力分布、難度規劃、非連續文本規劃與雙文本規劃。`,
-
-        4: `【角色設定】
-你是一位專業的國語文素養命題老師。請依 PIRLS 與素養導向要求生成閱讀測驗。
-
-【出題規格】
-1. 10 題閱讀題 (7 選擇, 3 簡答)。
-2. PIRLS 比例：提取(2)、推論(3)、整合(3)、比較(2)。
-3. 嚴禁：字詞解釋、抄句作答、模糊答案、選項直接提示。
-4. 高層次題要求：必須跨段整合、評估或情境應用。
-5. 加碼：3 題雙文本比較題。
-
-【每題固定格式】
-題號、PIRLS層次、素養導向元素、對應段落、題目、選項、答案、解析、命題意圖。`,
-
-        5: `【角色設定】
-你是一位國語文閱讀素養命題審題老師。
-【任務】
-1. 檢查題目是否具備情境、整合資訊並避免死記。若不符要求請自動修正。
-2. 提供命題證據分析：正確答案依據、干擾項錯誤原因、區分度來源。
-3. 難度驗證：確保符合指定年級需求。
-【固定輸出格式】
-題目品質檢查、修正後題目、命題證據分析、最終品質評估。`
-    };
-
-    let currentStep = 1;
-
-    function nextStep(s) {
-        document.getElementById(`panel-${currentStep}`).style.display = 'none';
-        document.getElementById(`step-i-${currentStep}`).classList.remove('active');
-        currentStep = s;
-        document.getElementById(`panel-${currentStep}`).style.display = 'block';
-        document.getElementById(`step-i-${currentStep}`).classList.add('active');
-        window.scrollTo(0,0);
-    }
-
-    function prevStep(s) {
-        nextStep(s);
-    }
-
-    function copyPrompt(n) {
-        let textVal = document.getElementById(`text-${n}`).value;
-        if(!textVal && n === 1) { alert("請輸入或上傳文章內容！"); return; }
-        
-        let gradeStr = (n === 3) ? `\n\n【指定命題對象年級】：${document.getElementById('grade').value}\n` : "";
-        let finalPrompt = PROMPTS[n] + gradeStr + `\n\n--- 這裡是需要處理的內容 ---\n\n` + textVal;
-        
-        navigator.clipboard.writeText(finalPrompt).then(() => {
-            alert(`✅ 指令 ${n} 已複製到剪貼簿！`);
-            window.open("https://chatgpt.com/", "_blank");
-        });
-    }
-
-    // OCR 與 PDF 處理
-    document.getElementById('filePicker').addEventListener('change', async (e) => {
-        const file = e.target.files[0];
-        if (!file) return;
-        const status = document.getElementById('ocrStatus');
-        status.style.display = 'block';
-
-        if (file.type === "application/pdf") {
-            const reader = new FileReader();
-            reader.onload = async function() {
-                const typedarray = new Uint8Array(this.result);
-                pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.worker.min.js';
-                const pdf = await pdfjsLib.getDocument(typedarray).promise;
-                let fullText = "";
-                for (let i = 1; i <= pdf.numPages; i++) {
-                    const page = await pdf.getPage(i);
-                    const content = await page.getTextContent();
-                    fullText += content.items.map(item => item.str).join(' ') + "\n";
-                }
-                document.getElementById('text-1').value = fullText;
-                status.style.display = 'none';
-            };
-            reader.readAsArrayBuffer(file);
-        } else {
-            Tesseract.recognize(file, 'chi_tra').then(({ data: { text } }) => {
-                document.getElementById('text-1').value = text;
-                status.style.display = 'none';
-            });
-        }
-    });
-
-    function finish() {
-        window.print();
-    }
+function copyPrompt(e, id) {
+  e.stopPropagation();
+  const el = document.getElementById(id);
+  if (!el) return;
+  navigator.clipboard.writeText(el.textContent.trim()).then(() => {
+    const btn = e.currentTarget;
+    btn.textContent = '✓ 已複製';
+    btn.classList.add('copied');
+    setTimeout(() => {
+      btn.textContent = '複製 Prompt';
+      btn.classList.remove('copied');
+    }, 2000);
+  });
+}
 </script>
-
 </body>
 </html>
